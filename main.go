@@ -17,6 +17,10 @@ func TestBeep() {
 	beepFunc.Call(0xffffffff)
 }
 
+func LazyCallProc(a... uintptr) (r1, r2 uintptr, lastErr string) {
+
+}
+
 func SoftButtonChangeCallback(a... uintptr) {
 	fmt.Printf("all the things: %q", a)
 }
@@ -53,7 +57,11 @@ func main() {
 
 	// setCallbackProc.Call()
 
-
+	enumerateProc := lazyDll.NewProc("DirectOutput_Enumerate")
+	r1, r2, errNo = enumerateProc.Call(0)
+	fmt.Printf("%q\n", r1)
+	fmt.Printf("%q\n", r2)
+	fmt.Printf("%q\n", errNo)
 
 	os.Exit(0)
 }
