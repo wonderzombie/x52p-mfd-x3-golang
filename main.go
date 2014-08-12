@@ -12,13 +12,19 @@ var deviceTypeX52Pro = "29DAD506-F93B-4F20-85FA-1E02C04FAC17";
 var appName = "x52p-mfd-x3-golang"
 var dllPath = "DirectOutput.dll"
 
+var (
+	lazyDll = syscall.NewLazyDLL(dllPath)
+
+	procInitialize = lazyDll.NewProc("DirectOutput_Initialize")
+	procRegisterDeviceChangeCallback = lazyDll.NewProc("DirectOutput_RegisterDeviceChangeCallback")
+	procEnumerate = lazyDll.NewProc("DirectOutput_Enumerate")
+
+	procGetDeviceType = lazyDll.NewProc("DirectOutput_GetDeviceType")
+)
+
 func TestBeep() {
 	beepFunc := syscall.MustLoadDLL("user32.dll").MustFindProc("MessageBeep")
 	beepFunc.Call(0xffffffff)
-}
-
-func LazyCallProc(a... uintptr) (r1, r2 uintptr, lastErr string) {
-
 }
 
 func SoftButtonChangeCallback(a... uintptr) {
@@ -36,32 +42,20 @@ func main() {
 	}
 	fmt.Println(lazyDll)
 
-	proc := lazyDll.NewProc("DirectOutput_Initialize")
-
-	fmt.Println(proc)
-
 	runes := []rune(appName)
 	p := uintptr(unsafe.Pointer(&runes))
-	r1, r2, errNo := proc.Call(p)
+	r1, r2, errNo := procInitialize.Call(p)
+	fmt.Printf("%v\n", r1)
+	fmt.Printf("%v\n", r2)
+	fmt.Printf("%v\n", errNo)
 
-	// Takes a long time!
+	r1, r2, errNo = procEnumerate.Call(0)
+	fmt.Printf("%+v\n", r1)
+	fmt.Printf("%+v\n", r2)
+	fmt.Printf("%+v\n", errNo)
 
-	fmt.Printf("%q\n", r1)
-	fmt.Printf("%q\n", r2)
-	fmt.Printf("%q\n", errNo)
-
-	// cbackPtr := syscall.NewCallback(SoftButtonChangeCallback)
-
-	// setCallbackProc := lazyDll.NewProc("DirectOutput_RegisterDeviceChangeCallback")
-	// fmt.Println(setCallbackProc)
-
-	// setCallbackProc.Call()
-
-	enumerateProc := lazyDll.NewProc("DirectOutput_Enumerate")
-	r1, r2, errNo = enumerateProc.Call(0)
-	fmt.Printf("%q\n", r1)
-	fmt.Printf("%q\n", r2)
-	fmt.Printf("%q\n", errNo)
-
-	os.Exit(0)
+	r1, r2, errNo = procGetDeviceType.Call(0)
+	fmt.Printf("%+v\n", r1)
+	fmt.Printf("%+v\n", r2)
+	fmt.Printf("%+v\n", errNo)
 }
