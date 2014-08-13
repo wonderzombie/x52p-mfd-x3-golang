@@ -28,8 +28,28 @@ var (
 	procSetLed = lazyDll.NewProc("DirectOutput_SetLed")
 )
 
+var S_OK uint32 = 0x00000000
+var E_HANDLE uint32 = 0x80070006
+var E_NOTIMPL uint32 = 0x80000001
+var E_INVALIDARG uint32 = 0x80070057
+var E_OUTOFMEMORY uint32 = 0x8007000E
+var E_PAGENOTACTIVE uint32 = 0xFF040001
+
+var errorLookup = map[uint32]string {
+	S_OK : "S_OK",
+	E_HANDLE: "E_HANDLE",
+	E_NOTIMPL: "E_NOTIMPL",
+	E_INVALIDARG: "E_INVALIDARG",
+	E_OUTOFMEMORY: "E_OUTOFMEMORY",
+	E_PAGENOTACTIVE: "E_PAGENOTACTIVE",
+}
+
 func log(a, b uintptr, err error) {
-	fmt.Printf("%#x | %#x | %#x\n", a, b, err)
+	fmt.Printf("%#x | %#x | %q\n", a, b, err)
+	i := uint32(a)
+	if v, ok := errorLookup[i]; ok {
+		fmt.Printf("%#x is %s\n", a, v)
+	}
 }
 
 func TestBeep() {
@@ -49,7 +69,7 @@ func PageCallback(handle, page, activated uintptr) int {
 
 func EnumerateCallback(device, ctx uintptr) int {
 	devices = append(devices, device)
-	fmt.Println("device", device)
+	fmt.Printf("device %#x\n", device)
 	return 0
 }
 
@@ -77,10 +97,6 @@ func main() {
 	log(r1, r2, lastErr)
 	// fmt.Printf("r1, r2, lastErr: %+v, %+v, %+v\n", r1, r2, lastErr)
 
-	fmt.Println("procGetDeviceType")
-	r1, r2, lastErr = procGetDeviceType.Call(0)
-	log(r1, r2, lastErr)
-	// fmt.Printf("r1, r2, lastErr: %+v, %+v, %+v\n", r1, r2, lastErr)
 
 	fmt.Println("procEnumerate")
 	r1, r2, lastErr = procEnumerate.Call(syscall.NewCallback(EnumerateCallback))
@@ -90,27 +106,40 @@ func main() {
 	for len(devices) == 0 {}
 	fmt.Println("devices:", devices)
 
+	fmt.Println("procGetDeviceType")
+	r1, r2, lastErr = procGetDeviceType.Call(devices[0])
+	log(r1, r2, lastErr)
+	// fmt.Printf("r1, r2, lastErr: %+v, %+v, %+v\n", r1, r2, lastErr)
+
+	// if uint32(r1) != S_OK {
+	// 	os.Exit(1)
+	// }
+
 	fmt.Println("procRegisterSoftButtonCallback")
 	myCallback := syscall.NewCallbackCDecl(SoftButtonChangeCallback)
 	r1, r2, lastErr = procRegisterSoftButtonCallback.Call(devices[0], myCallback, 6666)
 	log(r1, r2, lastErr)
 	// fmt.Printf("r1, r2, lastErr: %+v, %+v, %+v\n", r1, r2, lastErr)
 
-	myPageNum := 0x00000005
+	myPageNum := 0x00000002
 	pageNumPtr := uintptr(unsafe.Pointer(&myPageNum))
 	fmt.Println("procAddPage")
 	r1, r2, lastErr = procAddPage.Call(devices[0], pageNumPtr, StrToWideString("foo"), 0)
 	log(r1, r2, lastErr)
 	// fmt.Printf("r1, r2, lastErr: %+v, %+v, %+v\n", r1, r2, lastErr)
 
-	fmt.Println("procRegisterPageCallback")
-	myCallback = syscall.NewCallbackCDecl(PageCallback)
-	r1, r2, lastErr = procRegisterPageCallback.Call(devices[0], myCallback, 6666);
-	log(r1, r2, lastErr)
-	// fmt.Printf("r1, r2, lastErr: %+v, %+v, %+v\n", r1, r2, lastErr)
+	// fmt.Println("procRegisterPageCallback")
+	// myCallback = syscall.NewCallbackCDecl(PageCallback)
+	// r1, r2, lastErr = procRegisterPageCallback.Call(devices[0], myCallback, 6666);
+	// log(r1, r2, lastErr)
+	// // fmt.Printf("r1, r2, lastErr: %+v, %+v, %+v\n", r1, r2, lastErr)
 
-	// fmt.Println("procSetLed")
-	// r1, r2, lastErr = procSetLed.Call(devices[0], pageNumPtr, 1, 1)
+	fmt.Println("procSetLed")
+	r1, r2, lastErr = procSetLed.Call(devices[0], pageNumPtr, 1, 0)
+	log(r1, r2, lastErr)
+	fmt.Println("procSetLed")
+	r1, r2, lastErr = procSetLed.Call(devices[0], pageNumPtr, 1, 0)
+	log(r1, r2, lastErr)
 	// fmt.Printf("%+v\n", r1)
 	// fmt.Printf("%+v\n", r2)
 	// fmt.Printf("%+v\n", lastErr)
